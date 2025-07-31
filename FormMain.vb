@@ -1,6 +1,7 @@
 ﻿Imports System.IO
 Imports Microsoft.Data.SqlClient
 Imports MySql.Data.MySqlClient
+Imports System.Data.SqlClient
 Imports System.Timers
 Imports System.Windows.Forms.VisualStyles.VisualStyleElement.StartPanel
 Imports Microsoft.Win32
@@ -68,11 +69,23 @@ Public Class FormMain
                     End Using
                 End Using
             ElseIf dbType = "MSSQL" Then
-                Using Connection As New SqlConnection(ConnectionString)
-                    Connection.Open()
-                    Dim Command As New SqlCommand($"BACKUP DATABASE {database} TO DISK='{backupFile}'", Connection)
-                    Command.ExecuteNonQuery()
-                End Using
+                Dim SqlVersion As String = GetSqlServerVersion(ConnectionString)
+
+                If (SqlVersion.StartsWith("8") OrElse SqlVersion.StartsWith("9")) Then
+                    'SQL Server 2000 / 2005 - Use System.Data.SqlClient
+                    Using Connection As New System.Data.SqlClient.SqlConnection(ConnectionString)
+                        Connection.Open()
+                        Dim Command As New System.Data.SqlClient.SqlCommand($"BACKUP DATABASE {database} TO DISK='{backupFile}'", Connection)
+                        Command.ExecuteNonQuery()
+                    End Using
+                Else
+                    'SQL Server 2008+ - Use Microsoft.Data.SqlClient
+                    Using Connection As New Microsoft.Data.SqlClient.SqlConnection(ConnectionString)
+                        Connection.Open()
+                        Dim Command As New Microsoft.Data.SqlClient.SqlCommand($"BACKUP DATABASE {database} TO DISK='{backupFile}'", Connection)
+                        Command.ExecuteNonQuery()
+                    End Using
+                End If
             End If
         Catch ex As Exception
             MessageBox.Show("Backup failed: " & ex.Message, "Error", MessageBoxButtons.OK, MessageBoxIcon.Error)
@@ -155,4 +168,15 @@ Public Class FormMain
             Me.TxtBackupLocation.Text = FolderDialog.SelectedPath
         End If
     End Sub
+
+    Private Function GetSqlServerVersion(ConnectionString As String) As String
+        Try
+            Using Connection As New System.Data.SqlClient.SqlConnection(ConnectionString)
+                Connection.Open()
+                Return Connection.ServerVersion
+            End Using
+        Catch ex As Exception
+            Return ""
+        End Try
+    End Function
 End Class
