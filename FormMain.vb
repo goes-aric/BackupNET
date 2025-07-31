@@ -51,12 +51,13 @@ Public Class FormMain
         Dim backupFile As String = Path.Combine(backupLocation, If(backupCounter Mod 2 = 0, "backup_1.sql", "backup_2.sql"))
         backupCounter += 1
 
-        Dim ConnectionString As String = "DATA SOURCE = " & server & ";" _
-                            & "DATABASE = " & database & ";" _
-                            & "USER ID = " & user & ";" _
-                            & "PASSWORD = " & password & ";"
         Try
             If dbType = "MySQL" Then
+                Dim ConnectionString As String = "Data Source = " & server & ";" _
+                            & "Database = " & database & ";" _
+                            & "User ID = " & user & ";" _
+                            & "Password = " & password & ";"
+
                 Using Connection As New MySqlConnection(ConnectionString)
                     Connection.Open()
 
@@ -69,25 +70,33 @@ Public Class FormMain
                     End Using
                 End Using
             ElseIf dbType = "MSSQL" Then
+                Dim ConnectionString As String = "Data Source = " & server & ";" _
+                            & "Initial Catalog = " & database & ";" _
+                            & "User ID = " & user & ";" _
+                            & "Password = " & password & ";"
+
                 Dim SqlVersion As String = GetSqlServerVersion(ConnectionString)
 
                 If (SqlVersion.StartsWith("8") OrElse SqlVersion.StartsWith("9")) Then
                     'SQL Server 2000 / 2005 - Use System.Data.SqlClient
                     Using Connection As New System.Data.SqlClient.SqlConnection(ConnectionString)
                         Connection.Open()
-                        Dim Command As New System.Data.SqlClient.SqlCommand($"BACKUP DATABASE {database} TO DISK='{backupFile}'", Connection)
+                        Dim Command As New System.Data.SqlClient.SqlCommand($"BACKUP DATABASE [{database}] TO DISK = N'{backupFile}'", Connection)
                         Command.ExecuteNonQuery()
                     End Using
                 Else
                     'SQL Server 2008+ - Use Microsoft.Data.SqlClient
                     Using Connection As New Microsoft.Data.SqlClient.SqlConnection(ConnectionString)
                         Connection.Open()
-                        Dim Command As New Microsoft.Data.SqlClient.SqlCommand($"BACKUP DATABASE {database} TO DISK='{backupFile}'", Connection)
+                        Dim Command As New Microsoft.Data.SqlClient.SqlCommand($"BACKUP DATABASE [{database}] TO DISK = N'{backupFile}'", Connection)
                         Command.ExecuteNonQuery()
                     End Using
                 End If
             End If
+
+            WriteLog("Backup completed for " & dbType & " - " & backupFile)
         Catch ex As Exception
+            LogError(ex.Message, ex)
             MessageBox.Show("Backup failed: " & ex.Message, "Error", MessageBoxButtons.OK, MessageBoxIcon.Error)
         End Try
     End Sub
@@ -173,9 +182,12 @@ Public Class FormMain
         Try
             Using Connection As New System.Data.SqlClient.SqlConnection(ConnectionString)
                 Connection.Open()
+
+                WriteLog("MSSQL Version " & Connection.ServerVersion)
                 Return Connection.ServerVersion
             End Using
         Catch ex As Exception
+            LogError(ex.Message, ex)
             Return ""
         End Try
     End Function

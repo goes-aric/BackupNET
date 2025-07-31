@@ -10,16 +10,30 @@ Module GlobalModule
 
     'LOG FILE
     Public LogFileLocation As String = Application.StartupPath
-    Public LogFileName As String = "AppError.log"
-    Public LogFullPath As String = LogFileLocation & "\" & LogFileName
+    Public ErrorLogFileName As String = "AppError.log"
+    Public LogFileName As String = "AppActivity.log"
+    Public ErrorLogFullPath As String = LogFileLocation & "\" & ErrorLogFileName
+    Public ActivityLogFullPath As String = LogFileLocation & "\" & LogFileName
 
     Public Sub LogError(ErrorMessage As String, ex As Exception)
-        Dim LogFilePath As String = LogFullPath
+        Dim LogFilePath As String = ErrorLogFullPath
 
         Try
             Using writer As New StreamWriter(LogFilePath, True)
                 writer.WriteLine("[" & DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss") & "] ERROR : " & ErrorMessage)
                 writer.WriteLine("Stack Trace: " & ex.StackTrace)
+            End Using
+        Catch logEx As Exception
+            Throw New Exception()
+        End Try
+    End Sub
+
+    Public Sub WriteLog(Message As String)
+        Dim LogFilePath As String = ActivityLogFullPath
+
+        Try
+            Using writer As New StreamWriter(LogFilePath, True)
+                writer.WriteLine("[" & DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss") & "] Message : " & Message)
             End Using
         Catch logEx As Exception
             Throw New Exception()
