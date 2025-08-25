@@ -49,6 +49,9 @@ Public Class FormMain
         Dim database As String = TxtDatabase.Text
         Dim backupLocation As String = If(String.IsNullOrWhiteSpace(TxtBackupLocation.Text), Application.StartupPath, TxtBackupLocation.Text)
         Dim backupFile As String = Path.Combine(backupLocation, If(backupCounter Mod 2 = 0, "backup_1.sql", "backup_2.sql"))
+        If dbType = "MSSQL" Then
+            backupFile = Path.Combine(backupLocation, If(backupCounter Mod 2 = 0, "backup_1.bak", "backup_2.bak"))
+        End If
         backupCounter += 1
 
         Try
@@ -76,21 +79,25 @@ Public Class FormMain
                             & "Password = " & password & ";"
 
                 Dim SqlVersion As String = GetSqlServerVersion(ConnectionString)
+                Dim sqlVersionNumber As Integer
+                Dim versionParts() As String = SqlVersion.Split(".")
 
-                If (SqlVersion.StartsWith("8") OrElse SqlVersion.StartsWith("9")) Then
-                    'SQL Server 2000 / 2005 - Use System.Data.SqlClient
-                    Using Connection As New System.Data.SqlClient.SqlConnection(ConnectionString)
-                        Connection.Open()
-                        Dim Command As New System.Data.SqlClient.SqlCommand($"BACKUP DATABASE [{database}] TO DISK = N'{backupFile}'", Connection)
-                        Command.ExecuteNonQuery()
-                    End Using
-                Else
-                    'SQL Server 2008+ - Use Microsoft.Data.SqlClient
-                    Using Connection As New Microsoft.Data.SqlClient.SqlConnection(ConnectionString)
-                        Connection.Open()
-                        Dim Command As New Microsoft.Data.SqlClient.SqlCommand($"BACKUP DATABASE [{database}] TO DISK = N'{backupFile}'", Connection)
-                        Command.ExecuteNonQuery()
-                    End Using
+                If versionParts.Length > 0 AndAlso Integer.TryParse(versionParts(0), sqlVersionNumber) Then
+                    If (sqlVersionNumber = 8 OrElse sqlVersionNumber = 9) Then
+                        'SQL Server 2000 / 2005 - Use System.Data.SqlClient
+                        Using Connection As New System.Data.SqlClient.SqlConnection(ConnectionString)
+                            Connection.Open()
+                            Dim Command As New System.Data.SqlClient.SqlCommand($"BACKUP DATABASE [{database}] TO DISK = N'{backupFile}'", Connection)
+                            Command.ExecuteNonQuery()
+                        End Using
+                    Else
+                        'SQL Server 2008+ - Use Microsoft.Data.SqlClient
+                        Using Connection As New Microsoft.Data.SqlClient.SqlConnection(ConnectionString)
+                            Connection.Open()
+                            Dim Command As New Microsoft.Data.SqlClient.SqlCommand($"BACKUP DATABASE [{database}] TO DISK = N'{backupFile}'", Connection)
+                            Command.ExecuteNonQuery()
+                        End Using
+                    End If
                 End If
             End If
 
